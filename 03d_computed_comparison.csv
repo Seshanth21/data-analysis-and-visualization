@@ -1,0 +1,7 @@
+Dataset,Model,Metric,Value
+Manual UCI-style (synthetic),Linear BMI from Glucose,R2,0.13736506424644035
+Manual UCI-style (synthetic),Logistic Outcome,Accuracy,0.66
+Pima Indians,Linear BMI from Glucose,R2,0.05338343264304268
+Pima Indians,Logistic Outcome,Accuracy,0.7077922077922078
+Manual UCI-style (synthetic),Multiple BMI regression,R2,0.11755445406096943
+Pima Indians,Multiple BMI regression,R2,0.1175752223772153
