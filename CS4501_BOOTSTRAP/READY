@@ -1,0 +1,4 @@
+CS4501 Compiler Design Lab bootstrap package
+Archive SHA-256: f0a7defbc921e5d9c1ac653083950f8a2522c38820d389bea1d5d52cff7043b2
+Experiments: 10
+Execution: GitHub Actions with GNU Flex, GNU Bison and GCC
