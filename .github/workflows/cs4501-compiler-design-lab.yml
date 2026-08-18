@@ -1,0 +1,94 @@
+name: Build and execute CS4501 compiler-design lab
+
+on:
+  push:
+    branches:
+      - cs4501-compiler-design-lab
+    paths:
+      - "CS4501_BOOTSTRAP/READY"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: cs4501-compiler-design-lab
+  cancel-in-progress: false
+
+jobs:
+  execute-all-experiments:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Check out execution branch
+        uses: actions/checkout@v4
+        with:
+          ref: cs4501-compiler-design-lab
+          fetch-depth: 0
+          persist-credentials: true
+
+      - name: Reconstruct source package
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat CS4501_BOOTSTRAP/archive.b64.part* | base64 --decode > /tmp/CS4501_Compiler_Design_Lab_sources.tar.gz
+          echo "f0a7defbc921e5d9c1ac653083950f8a2522c38820d389bea1d5d52cff7043b2  /tmp/CS4501_Compiler_Design_Lab_sources.tar.gz" | sha256sum --check
+          rm -rf CS4501_Compiler_Design_Lab
+          tar -xzf /tmp/CS4501_Compiler_Design_Lab_sources.tar.gz
+          test -f CS4501_Compiler_Design_Lab/scripts/run_all.sh
+
+      - name: Install GNU Flex, Bison and GCC
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y flex bison gcc make python3 zip
+
+      - name: Compile, execute and verify all 10 experiments
+        id: execute
+        shell: bash
+        run: |
+          set +e
+          mkdir -p CS4501_Compiler_Design_Lab/reports
+          (
+            cd CS4501_Compiler_Design_Lab
+            bash scripts/run_all.sh
+          ) 2>&1 | tee CS4501_Compiler_Design_Lab/reports/workflow_console.log
+          status=${PIPESTATUS[0]}
+          printf '%s\n' "$status" > CS4501_Compiler_Design_Lab/reports/workflow_exit_status.txt
+          echo "status=$status" >> "$GITHUB_OUTPUT"
+          exit 0
+
+      - name: Record workflow provenance
+        shell: bash
+        run: |
+          cat > CS4501_Compiler_Design_Lab/reports/github_actions_run.md <<EOF
+          # GitHub Actions execution provenance
+
+          - Repository: ${GITHUB_REPOSITORY}
+          - Branch: ${GITHUB_REF_NAME}
+          - Workflow run ID: ${GITHUB_RUN_ID}
+          - Workflow run number: ${GITHUB_RUN_NUMBER}
+          - Source commit: ${GITHUB_SHA}
+          - Runner OS: ${RUNNER_OS}
+          - Script exit status: ${{ steps.execute.outputs.status }}
+          EOF
+
+      - name: Commit source, outputs and reports to the branch
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf CS4501_BOOTSTRAP
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A CS4501_Compiler_Design_Lab CS4501_BOOTSTRAP
+          if ! git diff --cached --quiet; then
+            git commit -m "Execute all CS4501 compiler-design experiments"
+            git push origin HEAD:cs4501-compiler-design-lab
+          fi
+
+      - name: Fail workflow when execution failed
+        if: steps.execute.outputs.status != '0'
+        run: |
+          echo "One or more experiments failed. See committed build logs and workflow_console.log." >&2
+          exit 1
